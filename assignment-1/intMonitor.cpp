@@ -14,10 +14,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "libraries.h"
 
 using namespace std;
 
 char pathname[13] = "/tmp/assign1";
+bool running = true;
 
 void error(const char *message);
 static void sigHandler(int sig);
@@ -26,12 +28,12 @@ string recvMsg(int sockfd, char buffer[256]);
 void cleanup(int sockfd);
 
 int main(int argc, char *argv[]) {
+
     int sock, slen;
     struct sockaddr_un s_addr;
     struct sigaction sigAct;
     string command;
     char buffer[256];
-    bool running = false;
 
     // Setup Signal Handlers //    
     sigAct.sa_handler = sigHandler;
@@ -56,17 +58,26 @@ int main(int argc, char *argv[]) {
     // Connect to the Network Monitor //
     if (connect(sock, (struct sockaddr *) &s_addr, slen) < 0) {
         error("Could not connect to server");
+    }else{
+        cout << "Connected to Server! " << endl;
     }
 
     // Ready to Start //
     sendMsg(sock, (string)"Ready");
 
     do {
-        // Wait For Instruction //
         command = recvMsg(sock, buffer);
 
         if (command.compare("Monitor") == 0) {
-            sendMsg(sock, (string)"Monitoring");
+            string iface = argv[1];
+            sendMsg(sock, "Monitoring");
+            
+            IMonitor * monitor = new IMonitor(iface);
+            int ifStatus = monitor->runMonitor();
+            
+            if(ifStatus == -1){
+                sendMsg(sock, "Link Down");
+            }
         } 
         else if (command.compare("Set Link Up") == 0) {
 
@@ -81,17 +92,18 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
 void error(const char *message) {
     perror(message);
     exit(0);
 }
 
 void sendMsg(int sockfd, string msg) {
+    cout << getpid() << " - Sending: " << msg << endl;
     write(sockfd, msg.c_str(), msg.length() + 1);
 }
 
 string recvMsg(int sockfd, char buffer[256]) {
+    bzero(buffer, 255);
     read(sockfd, buffer, 255);
     return (string)buffer;
 }
@@ -105,6 +117,7 @@ static void sigHandler(int sig) {
     switch(sig) {
         case SIGINT:
             cout << "CTRL-C Interruption... Shutting Down..." << endl;
+            running = false;
             break;
         case SIGTSTP:
             cout << "CTRL-Z Interruption..." << endl;
