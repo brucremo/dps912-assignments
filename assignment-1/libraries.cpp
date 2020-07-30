@@ -37,8 +37,8 @@ void IMonitor::printStatus(){
 }
 
 bool IMonitor::ifDown(){
-    cout << readFileContent(this->ifpath + "operstate") << endl;
-    return readFileContent(this->ifpath + "operstate") != "up";
+    string ifaceStatus = readFileContent(this->ifpath + "operstate");
+    return ifaceStatus != "up" && ifaceStatus != "unknown";
 }
 
 void IMonitor::readStatus(){

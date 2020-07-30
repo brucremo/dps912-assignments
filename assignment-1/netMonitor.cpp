@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
 
         if(message != "Monitoring"){
             cout << "Error: Monitoring failed" << endl;
+            sendMsg(recvfd, "Shut Down");
         }
     }
     

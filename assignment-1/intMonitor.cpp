@@ -77,13 +77,16 @@ int main(int argc, char *argv[]) {
             
             if(ifStatus == -1){
                 sendMsg(sock, "Link Down");
+                monitor->stopMonitor();
+                delete monitor;
             }
         } 
         else if (command.compare("Set Link Up") == 0) {
 
         }
         else if (command.compare("Shut Down") == 0) {
-
+            sendMsg(sock, "Done");
+            cleanup(sock);
         }
         else {
             cout << "Unrecognized Command" << endl;
@@ -92,6 +95,7 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
 void error(const char *message) {
     perror(message);
     exit(0);
