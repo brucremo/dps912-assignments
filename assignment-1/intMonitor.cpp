@@ -14,6 +14,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 #include "libraries.h"
 
 using namespace std;
@@ -26,25 +28,14 @@ static void sigHandler(int sig);
 void sendMsg(int sockfd, string msg);
 string recvMsg(int sockfd, char buffer[256]);
 void cleanup(int sockfd);
+int setInterfaceUp(int sockfd, string iface);
 
 int main(int argc, char *argv[]) {
-
+    string iface = argv[1];
     int sock, slen;
     struct sockaddr_un s_addr;
-    struct sigaction sigAct;
     string command;
     char buffer[256];
-
-    // Setup Signal Handlers //    
-    sigAct.sa_handler = sigHandler;
-    sigemptyset(&sigAct.sa_mask);
-    sigAct.sa_flags = 0;
-    int err1 = sigaction(SIGINT, &sigAct, NULL);
-    int err2 = sigaction(SIGTSTP, &sigAct, NULL);
-    if (err1 < 0 || err2 < 0) {
-       cout << "Cannot create the signal handler" << endl;
-       return -1;
-    }
 
     // Setup the Socket //
     bzero((char *)&s_addr, sizeof(s_addr));
@@ -67,6 +58,7 @@ int main(int argc, char *argv[]) {
 
     do {
         command = recvMsg(sock, buffer);
+        cout << "Received: " << command << endl << endl;
 
         if (command.compare("Monitor") == 0) {
             string iface = argv[1];
@@ -82,11 +74,18 @@ int main(int argc, char *argv[]) {
             }
         } 
         else if (command.compare("Set Link Up") == 0) {
-
+            int n = setInterfaceUp(sock, iface);
+            if(n < 0){
+                cout << strerror(errno) << endl;
+                return -1;
+            }else{
+                sendMsg(sock, "Link Up");
+            }
         }
         else if (command.compare("Shut Down") == 0) {
             sendMsg(sock, "Done");
             cleanup(sock);
+            running = false;
         }
         else {
             cout << "Unrecognized Command" << endl;
@@ -94,6 +93,17 @@ int main(int argc, char *argv[]) {
     } while (running);
 
     return 0;
+}
+
+int setInterfaceUp(int sockfd, string iface){
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof ifr);
+
+    strncpy(ifr.ifr_name, iface.c_str(), IFNAMSIZ);
+
+    ifr.ifr_flags |= IFF_UP;
+    return ioctl(sockfd, SIOCSIFFLAGS, &ifr);
 }
 
 void error(const char *message) {
@@ -115,19 +125,4 @@ string recvMsg(int sockfd, char buffer[256]) {
 void cleanup(int sockfd) {
     sendMsg(sockfd, (string)"Done");
     close(sockfd);
-}
-
-static void sigHandler(int sig) {
-    switch(sig) {
-        case SIGINT:
-            cout << "CTRL-C Interruption... Shutting Down..." << endl;
-            running = false;
-            break;
-        case SIGTSTP:
-            cout << "CTRL-Z Interruption..." << endl;
-            // Discard //
-            break;
-	default:
-	    cout << "Undefined signal..." << endl;
-    }
 }

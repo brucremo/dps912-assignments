@@ -30,6 +30,7 @@ IMonitor::IMonitor(string ifName){
 
 void IMonitor::printStatus(){
     this->readStatus();
+    cout << endl << " ----------------------------------------- " << endl;
     cout << "Interface: " << this->ifName << " state: " << this->ifState << " up_count: " << this->ifup_count << " down_count: " << this->ifdown_count << endl;
     cout << "rx_bytes: " << this->ifrx_bytes << " rx_dropped: " << this->ifrx_dropped << " rx_errors: " << this->ifrx_errors << " rx_packets: " << this->ifrx_packets << endl;
     cout << "tx_bytes: " << this->iftx_bytes << " tx_dropped: " << this->iftx_dropped << " tx_errors: " << this->iftx_errors << " tx_packets: " << this->iftx_packets << endl;

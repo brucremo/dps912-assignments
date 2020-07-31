@@ -6,7 +6,7 @@ FILES2=netMonitor.cpp
 FILES3=libraries.cpp
 
 
-all: clean intMonitor netMonitor
+all: intMonitor netMonitor
 
 intMonitor: $(FILES1)
 	$(CC) $(CFLAGS) -o intMonitor $(FILES1) $(FILES3)

@@ -37,6 +37,22 @@ int main(int argc, char *argv[]) {
 
     FD_ZERO(&fdset);
 
+    //Declare a variable of type struct sigaction
+    struct sigaction sig;
+    sig.sa_handler = sigHandler;
+    sigemptyset(&sig.sa_mask);
+    sig.sa_flags = 0;
+
+    //Register signal handlers for ctrl-C and ctrl-Z
+    int action3 = sigaction(SIGINT, &sig, NULL);
+    int action4 = sigaction(SIGTSTP, &sig, NULL);
+
+    //Ensure there are no errors in registering the handlers
+    if (action3 < 0 || action4 < 0 ) {
+       cout << "Error registering handlers, exiting..." << endl;
+       return -1;
+    }
+
     // Request User Input //
     while (true) {
         cout << "How Many Interfaces: ";
@@ -51,6 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
     pid_t intPids[numInterface];
+    int connectedFds [numInterface];
 
     for (int i = 0; i < numInterface; i++) {
         
@@ -80,6 +97,8 @@ int main(int argc, char *argv[]) {
         error("Error binding the socket");
     }
 
+    
+
     for (int i = 0; i < numInterface; i++) {
         cout << "Listening on socket..." << endl;
         listen(masterfd, 5);
@@ -89,6 +108,7 @@ int main(int argc, char *argv[]) {
         recvfd = accept(masterfd, (struct sockaddr *)&c_addr, &clen);
         if (recvfd < 0) { error("Could not accept connection."); }
         FD_SET(recvfd, &fdset);
+        connectedFds[i] = recvfd;
 
         // Receive "Ready" from Interface //
         string message = recvMsg(recvfd, buffer);
@@ -107,18 +127,44 @@ int main(int argc, char *argv[]) {
             sendMsg(recvfd, "Shut Down");
         }
     }
-    
-    return 0;
-}
 
-void cleanup() {
+    do {
+        // Receive Further messages// 
+        string message = recvMsg(recvfd, buffer);
+
+        if (message.compare("Link Down") == 0) {
+            sendMsg(recvfd, "Set Link Up");
+        } 
+        else if (message.compare("Link Up") == 0) {
+            sendMsg(recvfd, "Monitor");
+        }else{
+            continue;
+        }
+    } while (keepRunning);
+
+    cout << "Shutting down..." << endl;
+    
+    for(int i = 0; i < numInterface; i++){
+        cout << "Shutting down: " << connectedFds[i] << endl;
+        // Write "Shut Down" to Interface //
+        sendMsg(connectedFds[i], "Shut Down");
+
+        // Receive "Done" // 
+        string message = recvMsg(connectedFds[i], buffer);
+        if (message.compare("Done") == 0) {
+            close(connectedFds[i]);
+        }
+    }
+
     remove(pathname);
+
+    return 0;
 }
 
 static void sigHandler(int sig) {
     switch(sig) {
         case SIGINT:
-            cout << "CTRL-C Interruption... Shutting Down..." << endl;
+            cout << "CTRL-C Interruption..." << endl;
             keepRunning = false;
             break;
         case SIGTSTP:
