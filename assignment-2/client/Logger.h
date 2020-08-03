@@ -1,3 +1,7 @@
+#include <string>
+
+using namespace std;
+
 enum LOG_LEVEL {
     CRITICAL = -2,
     ERROR = -1,
@@ -7,7 +11,7 @@ enum LOG_LEVEL {
 
 void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber, string message);
 
-int InitializeLog();
+void InitializeLog();
 
 void SetLogLevel(LOG_LEVEL level);
 

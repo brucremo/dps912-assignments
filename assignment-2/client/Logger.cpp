@@ -1,5 +1,4 @@
 #include "Logger.h"
-#include <string>
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <unistd.h> 
@@ -11,6 +10,7 @@
 #include <netinet/in.h> 
 #include <thread>
 #include <pthread.h>
+#include <iostream>
 
 using namespace std;
 
@@ -19,8 +19,8 @@ bool is_running = true;
 mutex logger_mutex;
 
 // Global variables
-const int MAX_BUFFER_SIZE = 256, server_port = 8080;
-struct sockaddr_in server_addr, client_addr; 
+const int MAX_BUFFER_SIZE = 256, server_port = 4201;
+struct sockaddr_in server_addr; 
 int sock_fd; 
 char buffer[MAX_BUFFER_SIZE]; 
 LOG_LEVEL global_log_level;
@@ -47,7 +47,7 @@ void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber
     sendto(sock_fd, buffer, datalen, 0, (struct sockaddr *)&server_addr, socket_len);
 }
 
-int InitializeLog(){
+void InitializeLog(){
     if ((sock_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) { 
         perror("ERROR: Unable to create socket"); 
         exit(EXIT_FAILURE); 
@@ -85,23 +85,26 @@ void run_receiver(int fd){
     while(is_running){
 
         memset(buffer, 0, MAX_BUFFER_SIZE);
-        
+
         logger_mutex.lock();
-        recvfrom(fd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&server_addr, &socket_len);
+        int size = recvfrom(fd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&server_addr, &socket_len);
 
         string message = buffer;
-        string log_level = message.substr(message.find("="));
 
-        if(log_level == "DEBUG"){
-            global_log_level = DEBUG;
-        }else if(log_level == "WARNING"){
-            global_log_level = WARNING;
-        }else if(log_level == "ERROR"){
-            global_log_level = ERROR;
-        }else if(log_level == "CRITICAL"){
-            global_log_level = CRITICAL;
-        }else{
-            continue;
+        if(size > 0){
+            string log_level = message.substr(message.find("="));
+
+            if(log_level == "DEBUG"){
+                global_log_level = DEBUG;
+            }else if(log_level == "WARNING"){
+                global_log_level = WARNING;
+            }else if(log_level == "ERROR"){
+                global_log_level = ERROR;
+            }else if(log_level == "CRITICAL"){
+                global_log_level = CRITICAL;
+            }else{
+                continue;
+            }
         }
         logger_mutex.unlock();
     }
