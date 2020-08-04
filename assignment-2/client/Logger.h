@@ -3,13 +3,13 @@
 using namespace std;
 
 enum LOG_LEVEL {
-    CRITICAL = -2,
-    ERROR = -1,
+    DEBUG = -1,
     WARNING = 0,
-    DEBUG = 1
+    ERROR = 1,
+    CRITICAL = 2
 };
 
-void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber, string message);
+void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber, char * message);
 
 void InitializeLog();
 

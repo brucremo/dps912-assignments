@@ -23,7 +23,7 @@ const int MAX_BUFFER_SIZE = 256, server_port = 4201;
 struct sockaddr_in server_addr; 
 int sock_fd; 
 char buffer[MAX_BUFFER_SIZE]; 
-LOG_LEVEL global_log_level;
+LOG_LEVEL global_log_level = ERROR;
 string server_ip = "127.0.0.1";
 socklen_t socket_len;
 
@@ -31,20 +31,18 @@ socklen_t socket_len;
 void run_receiver(int fd);
 
 // Interfaced functions
-void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber, string message){
+void Log(LOG_LEVEL level, char * filename, const char * funcname, int linenumber, char * message){
 
-    if(level != global_log_level){
-        return;
+    if(level > global_log_level){
+        time_t now = time(0);
+        char *dt = ctime(&now);
+        memset(buffer, 0, MAX_BUFFER_SIZE);
+        char levelStr[][16]={"DEBUG", "WARNING", "ERROR", "CRITICAL"};
+        int datalen = sprintf(buffer, "%s %s %s:%s:%d %s\n", dt, levelStr[level], filename, funcname, linenumber, message) + 1;
+        buffer[datalen-1]='\0';
+
+        sendto(sock_fd, buffer, datalen, 0, (struct sockaddr *)&server_addr, socket_len);
     }
-
-    time_t now = time(0);
-    char *dt = ctime(&now);
-    memset(buffer, 0, MAX_BUFFER_SIZE);
-    char levelStr[][16]={"DEBUG", "WARNING", "ERROR", "CRITICAL"};
-    int datalen = sprintf(buffer, "%s %s %s:%s:%d %s\n", dt, levelStr[level], filename, funcname, linenumber, message) + 1;
-    buffer[datalen-1]='\0';
-
-    sendto(sock_fd, buffer, datalen, 0, (struct sockaddr *)&server_addr, socket_len);
 }
 
 void InitializeLog(){
@@ -92,7 +90,7 @@ void run_receiver(int fd){
         string message = buffer;
 
         if(size > 0){
-            string log_level = message.substr(message.find("="));
+            string log_level = message.substr((message.find("=")+1));
 
             if(log_level == "DEBUG"){
                 global_log_level = DEBUG;
@@ -105,7 +103,10 @@ void run_receiver(int fd){
             }else{
                 continue;
             }
+        }else{
+            sleep(1);
         }
+        message = "";
         logger_mutex.unlock();
     }
 }
